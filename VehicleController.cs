@@ -4,11 +4,12 @@ using System.Collections.Generic;
 [RequireComponent(typeof(Rigidbody))]
 public class VehicleController : MonoBehaviour
 {
-    public float baseMaxSpeed = 100f;
-    public float baseAcceleration = 20f;
-    public float baseBrakeForce = 30f;
-    public float baseHandling = 10f;
-    public float maxHealth = 100f;
+    [SerializeField] private float baseMaxSpeed = 100f;
+    [SerializeField] private float baseAcceleration = 20f;
+    [SerializeField] private float baseBrakeForce = 30f;
+    [SerializeField] private float baseHandling = 10f;
+    [SerializeField] private float maxHealth = 100f;
+
     public float currentDeceleration = 5f;
     public float currentSpeed;
     public float currentHealth;
@@ -29,75 +30,58 @@ public class VehicleController : MonoBehaviour
         rb = GetComponent<Rigidbody>();
         inputManager = FindObjectOfType<InputManager>();
         moduleManager = GetComponent<ModuleManager>();
-        
+
         currentHealth = maxHealth;
         activeModifierEffects = new Dictionary<string, float>();
-        
+
         ResetStats();
     }
 
- public void Update()
-{
-    if (!inputManager) return;
-
-    // Get input values (X for turning, Y for acceleration/braking)
-    Vector2 moveInput = inputManager.GetVehicleInput();
-
-    // Apply input sensitivity
-    float horizontalInput = moveInput.x;  // Turning input (left/right)
-    float verticalInput = moveInput.y;    // Acceleration/braking input (forward/backward)
-
-    isAccelerating = verticalInput > 0;
-    isBraking = verticalInput < 0;
-
-    // Apply acceleration (forward movement)
-    if (isAccelerating)
+    public void Update()
     {
-        // Move towards max speed (forward)
-        currentSpeed = Mathf.MoveTowards(currentSpeed, currentMaxSpeed, currentAcceleration * Time.deltaTime * inputManager.accelerationSensitivity);
-    }
-    // Apply reverse movement (backward movement)
-    else if (isBraking)
-    {
-        // Move towards negative max speed (backward)
-        currentSpeed = Mathf.MoveTowards(currentSpeed, -currentMaxSpeed, currentAcceleration * Time.deltaTime * inputManager.accelerationSensitivity);
-    }
-    else
-    {
-        // Decelerate the vehicle when no input is given
-        ApplyDeceleration();
-    }
+        if (!inputManager) return;
 
-    // Apply turning based on input (X-axis from input)
-    float turnAmount = horizontalInput * currentHandling;
+        Vector2 moveInput = inputManager.GetVehicleInput();
+        float horizontalInput = moveInput.x;
+        float verticalInput = moveInput.y;
 
-    // Apply turning using Rigidbody's torque (rotation around the Y-axis)
-    if (Mathf.Abs(turnAmount) > 0.01f)  // Apply torque only if there's significant input
-    {
-        // Use the turnSensitivity from the InputManager to adjust how sensitive the turning is
-        rb.AddTorque(0f, turnAmount * Time.deltaTime * 10f * inputManager.turnSensitivity, 0f, ForceMode.VelocityChange); // Apply torque around Y-axis
+        isAccelerating = verticalInput > 0;
+        isBraking = verticalInput < 0;
+
+        if (isAccelerating)
+        {
+            currentSpeed = Mathf.MoveTowards(currentSpeed, currentMaxSpeed, currentAcceleration * Time.deltaTime * inputManager.accelerationSensitivity);
+        }
+        else if (isBraking)
+        {
+            currentSpeed = Mathf.MoveTowards(currentSpeed, -currentMaxSpeed, currentAcceleration * Time.deltaTime * inputManager.accelerationSensitivity);
+        }
+        else
+        {
+            ApplyDeceleration();
+        }
+
+        float turnAmount = horizontalInput * currentHandling;
+        if (Mathf.Abs(turnAmount) > 0.01f)
+        {
+            rb.AddTorque(0f, turnAmount * Time.deltaTime * 10f * inputManager.turnSensitivity, 0f, ForceMode.VelocityChange);
+        }
+
+        Vector3 moveDirection = transform.forward * currentSpeed;
+        rb.velocity = moveDirection;
     }
 
-    // Apply forward/backward movement based on currentSpeed
-    Vector3 moveDirection = transform.forward * currentSpeed;
-    rb.velocity = moveDirection;
-}
-
-// Simulate deceleration when no input is given
-private void ApplyDeceleration()
-{
-    // Decelerate more slowly based on the current speed
-    if (currentSpeed > 0)
+    private void ApplyDeceleration()
     {
-        currentSpeed = Mathf.MoveTowards(currentSpeed, 0f, currentDeceleration * Time.deltaTime);
+        if (currentSpeed > 0)
+        {
+            currentSpeed = Mathf.MoveTowards(currentSpeed, 0f, currentDeceleration * Time.deltaTime);
+        }
+        else if (currentSpeed < 0)
+        {
+            currentSpeed = Mathf.MoveTowards(currentSpeed, 0f, currentDeceleration * Time.deltaTime);
+        }
     }
-    else if (currentSpeed < 0)
-    {
-        currentSpeed = Mathf.MoveTowards(currentSpeed, 0f, currentDeceleration * Time.deltaTime);
-    }
-}
-
-
 
     public void OnCollisionEnter(Collision collision)
     {
@@ -115,11 +99,9 @@ private void ApplyDeceleration()
     {
         if (moduleManager == null) return;
 
-        // Request module activation from ModuleManager
         moduleManager.GetActiveModules().TryGetValue(moduleName, out var module);
         if (module != null)
         {
-            // Apply module effects to vehicle stats
             ApplyModuleEffects(module);
         }
     }
@@ -133,7 +115,6 @@ private void ApplyDeceleration()
     {
         currentHealth = Mathf.Max(0f, currentHealth - damage);
 
-        // Reduce performance based on damage
         float healthPercentage = currentHealth / maxHealth;
         UpdateStatsBasedOnHealth(healthPercentage);
 
@@ -145,8 +126,6 @@ private void ApplyDeceleration()
 
     private void ApplyModuleEffects(object module)
     {
-        // This would be implemented based on the Module class structure
-        // Example implementation:
         ResetStats();
         foreach (var effect in activeModifierEffects)
         {
@@ -191,11 +170,7 @@ private void ApplyDeceleration()
         {
             gameManager.EndRace();
         }
-        
-        // Disable vehicle controls
+
         enabled = false;
-        
-        // Optional: Trigger destruction effects
-        // Implement vehicle destruction visualization
     }
 }
